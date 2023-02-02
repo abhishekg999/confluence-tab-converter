@@ -1,0 +1,103 @@
+<html>
+  <style>
+    body {
+    display: flex;
+    height: 100vh;
+    align-items: center;
+    justify-content: center;
+    flex-direction: row;
+    }
+    textarea {
+    width: 45%;
+    height: 80%;
+    margin: 10px;
+    font-family: monospace;
+    padding: 10px;
+    border: 1px solid gray;
+    border-radius: 5px;
+    }
+    button {
+    margin: 10px;
+    padding: 10px;
+    background-color: lightgray;
+    border: 1px solid gray;
+    border-radius: 5px;
+    }
+</style>
+<script>
+    function convertHtml() {
+        let html_content = document.getElementById("input").value;
+        html_content = html_content.replace(/&nbsp;/g, " ");
+        let wrapped_html = `<root xmlns:ac="http://www.atlassian.com/schema/confluence/4/ac/" xmlns:ri="http://www.atlassian.com/schema/confluence/4/ri/">${html_content}</root>`;
+        let parser = new DOMParser();
+        let parsed_xml = parser.parseFromString(wrapped_html, "text/xml");
+    
+        let structured_macros = parsed_xml.getElementsByTagName("ac:structured-macro");
+    
+        for (let i = 0; i < structured_macros.length; i++) {
+            let sm = structured_macros[i];
+            let name = sm.getAttribute("ac:name");
+            if (name === "ui-tabs") {
+                sm.setAttribute("ac:name", "rw-ui-tabs-macro");
+    
+            } else if (name === "ui-tab") {
+                  let first_tab = sm;
+                  first_tab.setAttribute("ac:name", "rw-tab");
+                  console.log(first_tab)
+                  let parameter = first_tab.getElementsByTagName("ac:parameter")[0];
+                  let clonedtag = parameter.cloneNode(true);
+    
+                  console.log(first_tab);
+                  let innerElements = [];
+    
+                  while(first_tab.firstChild){
+                      let child = first_tab.firstChild;
+                      if (child.nodeName === "ac:parameter" && child.textContent === clonedtag.textContent){
+                          first_tab.removeChild(child)
+                      } else {
+                          innerElements.push(first_tab.removeChild(child));
+                      }  
+                  }
+    
+                  first_tab.appendChild(clonedtag);
+    
+                  let inner = "";
+                  for (let i = 0; i < innerElements.length; i++) {
+                    inner += new XMLSerializer().serializeToString(innerElements[i]);
+                  }
+                  let p = parsed_xml.createElement('p');
+                  p.setAttribute("class", "auto-cursor-target");
+                  p.setAttribute("data-debug", "here");
+                  p.appendChild(first_tab.cloneNode(true));
+    
+                  first_tab.insertAdjacentHTML("beforebegin", new XMLSerializer().serializeToString(p))
+                  first_tab.insertAdjacentHTML("afterend", inner);
+                  first_tab.parentElement.removeChild(first_tab);
+                  
+                }
+    
+             
+        }
+        let result_html = "";
+        let children = parsed_xml.children[0].children;
+        console.log(children)
+        for (let i = 0; i < children.length; i++) {
+            result_html += new XMLSerializer().serializeToString(children[i]);
+            console.log(children[i])
+        }
+        result_html = result_html.replace(/ xmlns(:.*?)?=\".*?\"/g, "");
+        document.getElementById("output").value = result_html;
+    }
+    
+    
+        
+</script>
+    <head>
+      <title>UI Tab Formatter</title>
+    </head>
+    <body>
+        <textarea id="input" rows="10" cols="50"></textarea>
+        <button onclick="convertHtml()">Convert</button>
+        <textarea id="output" rows="10" cols="50"></textarea>
+    </body>
+</html>
